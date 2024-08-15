@@ -9,13 +9,13 @@ const port = process.env.PORT || 5000
 const corsOptions = {
   origin: ['http://localhost:5173', 'http://localhost:5174', 'https://stunning-lebkuchen-fe383d.netlify.app'],
   credentials: true,
-  optionSuccessStatus: 200, 
+  optionSuccessStatus: 200,
 }
 
 
 
 app.use(cors(corsOptions))
-app.use(express.json()) 
+app.use(express.json())
 
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.6irp4bx.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -35,12 +35,35 @@ async function run() {
     // const productCollection = client.db('E-commerce').collection('products')
 
     const database = client.db("E-commerce");
-        const productCollection = database.collection("products");
+    const productCollection = database.collection("products");
 
     app.get('/product', async (req, res) => {
       const result = await productCollection.find().toArray()
       res.send(result)
     })
+
+
+    app.get('/products', async (req, res) => {
+      try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit)
+
+        const startIndex = (page - 1) * limit;
+
+        const total = await productCollection.countDocuments();
+        const products = await productCollection.find().skip(startIndex).limit(limit).toArray()
+
+        res.json({
+          products, page, totalPages: Math.ceil(total / limit),
+          totalProducts: total,
+        })
+
+
+      } catch (err) {
+        res.status(500).json({ message: err.message });
+      }
+    })
+
 
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
@@ -59,5 +82,5 @@ app.get('/', (req, res) => {
 })
 
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
+  console.log(`Example app listening on port ${port}`) 
 })
