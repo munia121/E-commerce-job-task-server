@@ -47,18 +47,28 @@ async function run() {
       try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit)
+        const search = req.query.search || '';
+
+
+        console.log(`Search: ${search}`);
+        console.log(`Page: ${page}, Limit: ${limit}`);
+        const query = search ? { name: { $regex: search, $options: 'i' } } : {};
+        console.log(`MongoDB Query: ${JSON.stringify(query)}`);
+
+        const total = await productCollection.countDocuments(query);
 
         const startIndex = (page - 1) * limit;
-
-        const total = await productCollection.countDocuments();
-        const products = await productCollection.find().skip(startIndex).limit(limit).toArray()
+        const products = await productCollection.find(query)
+          .skip(startIndex)
+          .limit(limit)
+          .toArray();
 
         res.json({
-          products, page, totalPages: Math.ceil(total / limit),
+          products,
+          page,
+          totalPages: Math.ceil(total / limit),
           totalProducts: total,
-        })
-
-
+        });
       } catch (err) {
         res.status(500).json({ message: err.message });
       }
@@ -82,5 +92,5 @@ app.get('/', (req, res) => {
 })
 
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`) 
+  console.log(`Example app listening on port ${port}`)
 })
