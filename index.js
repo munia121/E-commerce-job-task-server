@@ -43,6 +43,61 @@ async function run() {
     })
 
 
+    // *************************
+
+    app.get('/brands', async (req, res) => {
+      try {
+        const brands = await productCollection.distinct('name');
+        console.log("randers:", brands)
+        res.json(brands);
+      } catch (err) {
+        res.status(500).json({ message: err.message });
+      }
+    });
+
+    // Fetch unique categories
+    // app.get('/categories', async (req, res) => {
+    //   try {
+    //     const categories = await productCollection.findOne('category');
+    //     console.log('category',categories)
+    //     res.json(categories);
+    //   } catch (err) {
+    //     res.status(500).json({ message: err.message });
+    //   }
+    // });
+
+
+
+    app.get('/categories', async (req, res) => {
+      try {
+        // Aggregate pipeline to get unique categories
+        const categories = await productCollection.aggregate([
+          {
+            $group: {
+              _id: null, // Group all documents together
+              categories: { $addToSet: "$category" } // Collect unique categories
+            }
+          },
+          {
+            $project: {
+              _id: 0, // Exclude the _id field from the output
+              categories: 1 // Include the categories field
+            }
+          }
+        ]).toArray();
+
+        // Return categories array
+        res.json(categories[0] ? categories[0].categories : []);
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+        res.status(500).json({ message: 'Internal Server Error' });
+      }
+    });
+
+    // *************************
+
+
+
     app.get('/products', async (req, res) => {
       try {
         const page = parseInt(req.query.page) || 1;
@@ -51,10 +106,21 @@ async function run() {
         const sortField = req.query.sort || 'created_at'; // Default sort field
         const sortOrder = req.query.order === 'desc' ? -1 : 1; // Default sort order is ascending
 
+        const brand = req.query.brand || '';
+        const category = req.query.category || '';
+        const priceRange = req.query.priceRange || '';
+
+
 
         console.log(`Search: ${search}`);
         console.log(`Page: ${page}, Limit: ${limit}`);
-        const query = search ? { name: { $regex: search, $options: 'i' } } : {};
+        // const query = search ? { name: { $regex: search, $options: 'i' } } : {};
+        const query = {
+          ...(search && { name: { $regex: search, $options: 'i' } }),
+          // ...(brand && { brand }),
+          ...(category && { category }),
+          ...(priceRange && { price: { $gte: minPrice, $lte: maxPrice } })
+        };
         console.log(`MongoDB Query: ${JSON.stringify(query)}`);
 
         const total = await productCollection.countDocuments(query);
