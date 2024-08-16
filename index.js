@@ -48,6 +48,8 @@ async function run() {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit)
         const search = req.query.search || '';
+        const sortField = req.query.sort || 'created_at'; // Default sort field
+        const sortOrder = req.query.order === 'desc' ? -1 : 1; // Default sort order is ascending
 
 
         console.log(`Search: ${search}`);
@@ -59,6 +61,7 @@ async function run() {
 
         const startIndex = (page - 1) * limit;
         const products = await productCollection.find(query)
+          .sort({ [sortField]: sortOrder }) // Sorting logic
           .skip(startIndex)
           .limit(limit)
           .toArray();
