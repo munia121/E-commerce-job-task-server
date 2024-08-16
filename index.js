@@ -97,6 +97,27 @@ async function run() {
     // *************************
 
 
+    // price range
+    app.get('/price-range', async (req, res) => {
+      try {
+        const minPrice = await productCollection.find().sort({ price: 1 }).limit(1).next();
+        const maxPrice = await productCollection.find().sort({ price: -1 }).limit(1).next();
+
+        if (minPrice && maxPrice) {
+          res.json({ minPrice: minPrice.price, maxPrice: maxPrice.price });
+        } else {
+          res.status(404).json({ message: 'No products found' });
+        }
+      } catch (err) {
+        res.status(500).json({ message: err.message });
+      }
+    });
+
+
+
+
+
+
 
     app.get('/products', async (req, res) => {
       try {
@@ -110,14 +131,23 @@ async function run() {
         const category = req.query.category || '';
         const priceRange = req.query.priceRange || '';
 
+        // Parsing price range
+        let minPrice = 0;
+        let maxPrice = Infinity;
+
+        if (priceRange) {
+          const [min, max] = priceRange.split('-').map(Number);
+          minPrice = min || 0;
+          maxPrice = max || Infinity;
+        }
+
 
 
         console.log(`Search: ${search}`);
         console.log(`Page: ${page}, Limit: ${limit}`);
-        // const query = search ? { name: { $regex: search, $options: 'i' } } : {};
         const query = {
           ...(search && { name: { $regex: search, $options: 'i' } }),
-          // ...(brand && { brand }),
+          ...(brand && { brand }),
           ...(category && { category }),
           ...(priceRange && { price: { $gte: minPrice, $lte: maxPrice } })
         };
