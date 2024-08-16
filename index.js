@@ -47,9 +47,15 @@ async function run() {
 
     app.get('/brands', async (req, res) => {
       try {
-        const brands = await productCollection.distinct('name');
-        console.log("randers:", brands)
-        res.json(brands);
+        const brands = await productCollection.aggregate([
+          { $group: { _id: "$brand" } },  // Group by brand
+          { $sort: { _id: 1 } }  // Optional: sort by brand name
+        ]).toArray();
+
+        // Map the result to get an array of brand names
+        const brandList = brands.map(b => b._id);
+
+        res.json(brandList);
       } catch (err) {
         res.status(500).json({ message: err.message });
       }
@@ -108,6 +114,20 @@ async function run() {
         } else {
           res.status(404).json({ message: 'No products found' });
         }
+      } catch (err) {
+        res.status(500).json({ message: err.message });
+      }
+    });
+
+
+    // brand
+    app.get('/brands', async (req, res) => {
+      try {
+        // Fetch distinct brands from the product collection
+        const brands = await productCollection.distinct('brand');
+
+        // Send the list of brands as a response
+        res.json(brands);
       } catch (err) {
         res.status(500).json({ message: err.message });
       }
